@@ -1,6 +1,16 @@
 # LeetCode Daily AI
 
-This project generates a LeetCode Daily Challenge solution for manual review. It runs in GitHub Actions at **09:00 Asia/Kolkata** (`03:30 UTC`) and saves successful runs under `solutions/YYYY-MM-DD/`. It never submits to LeetCode and never stores LeetCode credentials, cookies, or tokens.
+This project prepares one or two LeetCode solutions every day for manual review. It runs in GitHub Actions at **09:00 Asia/Kolkata** (`03:30 UTC`) and saves successful runs under `solutions/YYYY-MM-DD/<problem-slug>/`.
+
+It uses a cost-saving hybrid strategy:
+
+1. It selects reviewed solutions from `catalog/problems.json`. These use no AI and no API cost.
+2. If the catalog has fewer entries than `DAILY_PROBLEM_COUNT`, it uses the configured AI provider only for the missing entries.
+
+Add reviewed entries to the catalog to eliminate AI usage entirely. Set `DAILY_PROBLEM_COUNT` to `1` or `2`.
+Before each run, add the URLs of problems you have already solved to `catalog/completed.json`.
+Those entries are excluded from catalog selection. The workflow cannot inspect your LeetCode
+account, because it never receives account credentials or session data.
 
 ## Source limitation
 
@@ -16,15 +26,20 @@ Example JSON:
 {"title":"Two Sum","url":"https://leetcode.com/problems/two-sum/","statement":"...","examples":[{"input":"nums = [2,7,11,15], target = 9","output":"[0,1]"}]}
 ```
 
-## Setup
+## GitHub Actions setup
 
-1. Create a repository secret named `AI_API_KEY` containing the key for your chosen OpenAI-compatible provider.
-2. Add repository variables under **Settings > Secrets and variables > Actions > Variables**:
-	- `DAILY_PROBLEM_SOURCE_URL` (recommended) or `DAILY_PROBLEM_URL`
-	- `AI_API_URL` (optional; defaults to OpenAI chat completions)
-	- `AI_MODEL` (optional; defaults to `gpt-4o-mini`)
-3. Merge this workflow into the default branch. Scheduled workflows run from the default branch.
-4. Run it manually from the Actions tab with **Run workflow**. A manual `problem_url` input can override the repository variable.
+1. Merge this workflow into the default branch. Scheduled workflows run from the default branch.
+2. Add an Actions variable `DAILY_PROBLEM_COUNT` with value `1` or `2` (default `2`).
+3. If the catalog is sufficient, no secret is needed. For AI fallback, add a repository secret
+   named `AI_API_KEY` containing a newly generated provider key, and these variables:
+   - `DAILY_PROBLEM_SOURCE_URL` (recommended) or `DAILY_PROBLEM_URL`
+   - `AI_API_URL` (optional; defaults to OpenAI chat completions)
+   - `AI_MODEL` (optional; defaults to `gpt-4o-mini`)
+4. Run **Actions > LeetCode Daily Solver > Run workflow** once to verify setup. A manual `problem_url` input can override `DAILY_PROBLEM_URL` for an AI fallback.
+
+Never paste an API key into source files, issues, pull requests, or chat. The key included in the
+request that led to this change is exposed and must be revoked immediately in the provider
+dashboard. Create a replacement key and save it only as the GitHub Actions `AI_API_KEY` secret.
 
 For local development, use Python 3.12+, copy `.env.example`, export its values, and run:
 
@@ -36,17 +51,30 @@ python -m daily_solver.main
 
 ## Output and validation
 
-Each successful run writes `solution.md` and `metadata.json` to `solutions/YYYY-MM-DD/`. The solution includes the title, URL, explanation, complexity, implementation, and available example tests. Before writing, syntax is parsed and generated tests run in a temporary directory using an isolated Python interpreter with a sanitized environment, CPU, memory, file-descriptor, and wall-clock limits. Generated code is still untrusted: review it manually before submission.
+Each successful run writes `solution.md` and `metadata.json` to `solutions/YYYY-MM-DD/<problem-slug>/`. The solution includes the title, URL, explanation, complexity, implementation, and available example tests. Before writing, syntax is parsed and tests run in a temporary directory using an isolated Python interpreter with resource limits. Review generated code before submission.
 
 The workflow commits only when `solutions/` changed, so rerunning the same date does not create duplicate commits. A failed generation or validation exits before any commit.
 
+## LeetCode login and submission
+
+This workflow intentionally does **not** log in to LeetCode or submit code. LeetCode does not provide a documented public submission API, and putting account passwords, session cookies, or browser tokens in GitHub Secrets would be unsafe. The generated files are committed for review.
+
+To submit safely:
+
+1. Open [leetcode.com](https://leetcode.com/) in your browser and sign in normally (email/password, Google, or GitHub).
+2. Open the problem URL from the generated `solution.md`.
+3. Copy the implementation into LeetCode's editor, select the matching language, and click **Run**.
+4. Review the result and click **Submit** yourself.
+
 ## Provider costs
 
-AI usage is billed by the provider and varies by model, prompt length, and retry count. The default model is only a convenience; configure a cheaper model or a compatible self-hosted endpoint if appropriate. The workflow makes at most `MAX_RETRIES` retries (default `2`) after the initial request.
+AI usage is billed only for catalog shortfalls and varies by provider, prompt length, and retry count. The workflow makes at most `MAX_RETRIES` retries (default `2`) after the initial request.
 
 ## Troubleshooting
 
-- **No problem source configured:** set `DAILY_PROBLEM_SOURCE_URL`, `DAILY_PROBLEM_JSON_PATH`, or `DAILY_PROBLEM_URL`.
+- **Catalog shortfall:** add reviewed entries to `catalog/problems.json`, or configure AI fallback and a problem source.
+- **Already solved problems are selected:** add their normalized LeetCode URLs to `catalog/completed.json`, one URL per list item.
+- **No problem source configured:** set `DAILY_PROBLEM_SOURCE_URL`, `DAILY_PROBLEM_JSON_PATH`, or `DAILY_PROBLEM_URL` when AI fallback is enabled.
 - **AI key error:** verify the exact secret name `AI_API_KEY`; secrets are never printed.
 - **Provider response error:** check `AI_API_URL`, `AI_MODEL`, provider quota, and that the endpoint returns OpenAI-compatible `choices[0].message.content` JSON.
 - **Validation failure:** inspect the Actions log. The generated artifact is not committed when tests fail.

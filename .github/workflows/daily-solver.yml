@@ -45,6 +45,9 @@ jobs:
           AI_MODEL: ${{ vars.AI_MODEL }}
           DAILY_PROBLEM_SOURCE_URL: ${{ vars.DAILY_PROBLEM_SOURCE_URL }}
           DAILY_PROBLEM_URL: ${{ inputs.problem_url || vars.DAILY_PROBLEM_URL }}
+          SOLUTION_CATALOG_PATH: catalog/problems.json
+          COMPLETED_PROBLEMS_PATH: catalog/completed.json
+          DAILY_PROBLEM_COUNT: ${{ vars.DAILY_PROBLEM_COUNT || '2' }}
         run: python -m daily_solver.main
 
       - name: Commit generated solution when changed

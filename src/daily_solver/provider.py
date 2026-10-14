@@ -37,7 +37,7 @@ class OpenAICompatibleProvider:
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(prompt)},
         ]}
-        headers = {"Authorization": f"Bearer {self.settings.ai_api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": "Bearer " + self.settings.ai_api_key, "Content-Type": "application/json"}
         last_error: Exception | None = None
         for attempt in range(self.settings.max_retries + 1):
             try:

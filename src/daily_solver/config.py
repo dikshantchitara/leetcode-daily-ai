@@ -7,6 +7,9 @@ class Settings:
     problem_source_url: str | None
     problem_url: str | None
     problem_json_path: str | None
+    catalog_path: str
+    completed_path: str
+    problem_count: int
     ai_api_url: str
     ai_api_key: str
     ai_model: str
@@ -22,6 +25,9 @@ class Settings:
             problem_source_url=os.getenv("DAILY_PROBLEM_SOURCE_URL"),
             problem_url=os.getenv("DAILY_PROBLEM_URL"),
             problem_json_path=os.getenv("DAILY_PROBLEM_JSON_PATH"),
+            catalog_path=os.getenv("SOLUTION_CATALOG_PATH", "catalog/problems.json"),
+            completed_path=os.getenv("COMPLETED_PROBLEMS_PATH", "catalog/completed.json"),
+            problem_count=max(1, min(2, int(os.getenv("DAILY_PROBLEM_COUNT", "2")))),
             ai_api_url=api_url,
             ai_api_key=os.getenv("AI_API_KEY", ""),
             ai_model=model,
