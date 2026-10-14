@@ -1,0 +1,60 @@
+name: LeetCode Daily Solver
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      problem_url:
+        description: "Optional manually selected problem URL"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-solver
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+      - name: Generate and validate daily solution
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_API_URL: ${{ vars.AI_API_URL }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          DAILY_PROBLEM_SOURCE_URL: ${{ vars.DAILY_PROBLEM_SOURCE_URL }}
+          DAILY_PROBLEM_URL: ${{ inputs.problem_url || vars.DAILY_PROBLEM_URL }}
+        run: python -m daily_solver.main
+
+      - name: Commit generated solution when changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add solutions
+          if git diff --cached --quiet; then
+            echo "No new solution changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: add daily LeetCode solution"
+          git push
